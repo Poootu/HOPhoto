@@ -1,0 +1,177 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
+package com.example.hophoto
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.camera.view.CameraController
+import androidx.camera.view.LifecycleCameraController
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.example.hophoto.ui.theme.HOPhotoTheme
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.util.Log
+import androidx.activity.compose.setContent
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture.OnImageCapturedCallback
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScopeInstance.align
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.dp
+
+
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if(!hasPermission())
+        {
+            ActivityCompat.requestPermissions(this, CAMERAX_PERMISSIONS,0)
+        }
+        enableEdgeToEdge()
+        setContent {
+            HOPhotoTheme {
+
+                val scaffoldState = rememberBottomSheetScaffoldState()
+                val camController = remember {
+                    LifecycleCameraController(applicationContext).apply{ //localContext.current is similar i think
+                        setEnabledUseCases(
+                            CameraController.IMAGE_ANALYSIS
+                            or CameraController.IMAGE_CAPTURE
+                        )
+                    }
+                }
+                BottomSheetScaffold(
+                    sheetContent = {},
+                    scaffoldState = scaffoldState,
+                    sheetPeekHeight = 0.dp
+                ) { paddingValues ->
+                    Box(modifier = Modifier.fillMaxSize().padding(paddingValues))
+                    {
+                       CameraPreview(
+                           camController = camController, modifier = Modifier.fillMaxSize( )
+                       )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        horizontalArrangement = Arrangement.SpaceAround
+                        ) {
+                            IconButton(
+                            onClick = {
+                                takePhoto(camController,
+                                {
+
+                                })
+                            },
+                            modifier = Modifier.offset(10.dp,10.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.AddCircle, contentDescription = "Take photo")
+                        }
+                    }
+
+                }
+
+/*                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    Greeting(
+                        name = "Android",
+                        modifier = Modifier.padding(innerPadding)
+                    )
+
+                }*/
+            }
+        }
+    }
+
+    private fun takePhoto(camController: LifecycleCameraController, onPhotoTaken: (Bitmap) -> Unit) {
+        camController.takePicture(ContextCompat.getMainExecutor(applicationContext),
+            object : OnImageCapturedCallback()
+            {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    super.onCaptureSuccess(image)
+                    onPhotoTaken(image.toBitmap())
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    super.onError(exception)
+                }
+
+            }
+            )
+    }
+
+    private fun hasPermission() : Boolean
+    {
+        return CAMERAX_PERMISSIONS.all{
+            ContextCompat.checkSelfPermission(
+                applicationContext,
+                it
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    companion object
+    {
+        private val CAMERAX_PERMISSIONS = arrayOf(
+            Manifest.permission.CAMERA
+        )
+    }
+}
+
+@Composable
+fun Greeting(name: String, modifier: Modifier = Modifier) {
+    Text(
+        text = "Hello $name!",
+        modifier = modifier
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GreetingPreview() {
+    HOPhotoTheme {
+        Greeting("Android")
+    }
+}
