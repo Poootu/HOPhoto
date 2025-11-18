@@ -40,7 +40,9 @@ android {
 }
 
 dependencies {
-
+    implementation("com.facebook.fresco:fresco:3.6.0")
+    implementation("com.sksamuel.scrimage:scrimage-core:4.3.4")
+    implementation("com.sksamuel.scrimage:scrimage-filters:4.3.4")
     implementation("androidx.camera:camera-camera2:1.5.1")
     implementation("androidx.camera:camera-lifecycle:1.5.1")
     implementation("androidx.camera:camera-view:1.5.1")

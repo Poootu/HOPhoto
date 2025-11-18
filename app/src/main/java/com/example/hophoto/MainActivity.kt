@@ -43,8 +43,8 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture.OnImageCapturedCallback
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScopeInstance.align
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,14 +59,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
-
+import com.example.hophoto.copiedTestCode.test1
 
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalStdlibApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        var lastImage : Bitmap = Bitmap.createBitmap(1,2,Bitmap.Config.ARGB_8888)
         super.onCreate(savedInstanceState)
         if(!hasPermission())
         {
@@ -74,6 +79,7 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         setContent {
+        var showImage by remember{ mutableStateOf(false) }
             HOPhotoTheme {
 
                 val scaffoldState = rememberBottomSheetScaffoldState()
@@ -85,42 +91,92 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-                BottomSheetScaffold(
-                    sheetContent = {},
-                    scaffoldState = scaffoldState,
-                    sheetPeekHeight = 0.dp
-                ) { paddingValues ->
-                    Box(modifier = Modifier.fillMaxSize().padding(paddingValues))
-                    {
-                       CameraPreview(
-                           camController = camController, modifier = Modifier.fillMaxSize( )
-                       )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth().padding(10.dp),
-                        horizontalArrangement = Arrangement.SpaceAround
+                    BottomSheetScaffold(
+                        sheetContent = {
+                            if (showImage) {
+                                Image(
+                                    bitmap = lastImage.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        },
+                        scaffoldState = scaffoldState,
+                        sheetPeekHeight = 10.dp
+                    ) { paddingValues ->
+                        Box(modifier = Modifier.fillMaxSize().padding(paddingValues))
+                        {
+                            CameraPreview(
+                                camController = camController, modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(10.dp),
+                            horizontalArrangement = Arrangement.SpaceAround
                         ) {
+                            if (showImage) {
+                                Image(
+                                    bitmap = lastImage.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                             IconButton(
-                            onClick = {
-                                takePhoto(camController,
-                                {
-
-                                })
-                            },
-                            modifier = Modifier.offset(10.dp,10.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.AddCircle, contentDescription = "Take photo")
+                                onClick = {
+                                    takePhoto(camController,
+                                        { imgBitmap ->
+                                            val array: IntArray =
+                                                IntArray(imgBitmap.height * imgBitmap.width)
+                                            imgBitmap.asImageBitmap().readPixels(
+                                                array,
+                                                0,
+                                                0,
+                                                imgBitmap.width,
+                                                imgBitmap.height,
+                                                0
+                                            )
+                                            Log.i("test",array[0].toHexString(HexFormat.UpperCase))
+                                            var imgPixels = array.map {
+                                                var hexColor = it.toHexString(HexFormat.UpperCase)
+                                                Triple(
+                                                    (hexColor.substring(2, 4).hexToInt()),
+                                                    (hexColor.substring(4, 6).hexToInt()),
+                                                    (hexColor.substring(6, 8).hexToInt())
+                                                )
+                                            }
+                                            Log.i("test", array.size.toString())
+                                            val newBitmap = imgBitmap.copy(imgBitmap.config!!,true)
+                                                newBitmap.setPixels(
+                                                test1(
+                                                    imgPixels.toMutableList(),
+                                                    imgBitmap.height,
+                                                    imgBitmap.width
+                                                ),
+                                                0,
+                                                imgBitmap.width,
+                                                0,
+                                                0,
+                                                imgBitmap.width,
+                                                imgBitmap.height
+                                            )
+                                            Log.i(
+                                                "test",
+                                                "width ${imgBitmap.width}  height ${imgBitmap.height}"
+                                            )
+                                            lastImage = newBitmap
+                                            showImage = true
+                                            Log.i("test",showImage.toString())
+                                        })
+                                },
+                                modifier = Modifier.offset(10.dp, 10.dp).weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AddCircle,
+                                    contentDescription = "Take photo"
+                                )
+                            }
                         }
                     }
-
-                }
-
-/*                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-
-                }*/
             }
         }
     }
