@@ -60,6 +60,16 @@ fun test1(listTriple : MutableList<Triple<Int,Int,Int>>, height: Int, width: Int
     Log.i("test","inside of test1")
     var newImage=to2d(listImage,width,height)
 
+    var segmentedGraph = (fastImageSegmentation(newImage as MutableList<MutableList<Int>>,100))
+    var segmentedList = vertsToList(segmentedGraph,height,width)
+    var listImageTriple = mutableListOf<Triple<Int,Int,Int>>()
+    for (i in 0 until height)
+    {
+        for (j in 0 until width)
+        {
+            listImageTriple.add(Triple(segmentedList[i][j].first,segmentedList[i][j].second,segmentedList[i][j].third))
+        }
+    }
 
     val argbFormat = HexFormat {
         number {
@@ -72,20 +82,47 @@ fun test1(listTriple : MutableList<Triple<Int,Int,Int>>, height: Int, width: Int
         }
     }
 
-    Log.i("test",newImage.toString())
+/*    Log.i("test",newImage.toString())
     Log.i("test",("FF534232".hexToInt(HexFormat.UpperCase).toString()))
-    Log.i("test",250.toHexString(HexFormat.UpperCase).trimStart('0'))
-//    var greyedImage2 = imageToSave.map { p -> Color((newImage[p.y][p.x]),(newImage[p.y][p.x]),(newImage[p.y][p.x])) }
+    Log.i("test",250.toHexString(HexFormat.UpperCase).trimStart('0'))*/
+
+    return listImageTriple.map {
+        ("FF" + (it.first.toHexString(HexFormat.UpperCase).trimStart('0'))
+                + (it.second.toHexString(HexFormat.UpperCase).trimStart('0'))
+                + (it.third.toHexString(HexFormat.UpperCase).trimStart('0'))).toString().hexToInt(HexFormat.UpperCase)
+    }.toIntArray()
+/*
     return listImage.map {
         ("FF" + (it.toHexString(HexFormat.UpperCase).trimStart('0'))
                 + (it.toHexString(HexFormat.UpperCase).trimStart('0'))
                 + (it.toHexString(HexFormat.UpperCase).trimStart('0'))).toString().hexToInt(HexFormat.UpperCase)
-    }.toIntArray()
+    }.toIntArray()*/
 
 
 
 }
 
+
+@OptIn(ExperimentalStdlibApi::class)
+fun test2(listTriple : IntArray, height: Int, width: Int): IntArray {
+
+    Log.i("test", "inside of test2")
+
+    val size = height*width
+
+    val coloredImage = IntArray(size) //because we save it as ARGB_8888 so 32 bits like an Int
+
+    for (i in 0 until size)
+    {
+        val redChannel = (listTriple[i] shr 16) and 0xFF //it makes 0000 RRRR 0000 0000 to 0000 0000 0000 RRRR to RRRR
+        val greenChannel = (listTriple[i] shr 8) and 0xFF
+        val blueChannel = (listTriple[i]) and 0xFF
+
+        coloredImage[i] = (0xFF shl 24) or (redChannel shl 16) or (greenChannel shl 8) or (blueChannel shl 0) //getting back to 32 bits for one color
+
+    }
+    return coloredImage
+}
 
 
 fun vertsToList(
@@ -171,11 +208,22 @@ data class Edge(
     }
 }
 
-fun imageSegmentation(image : MutableList<MutableList<Int>>,k : Int): MutableList<MutableList<Pair<Int, Int>>> {
+/*data class Vertice(
+    val first : Pair<Int,Int>,
+    val second : Pair<Int,Int>
+)
+{}*/
+
+
+fun fastImageSegmentation(image : MutableList<MutableList<Int>>,k : Int): MutableList<MutableList<Pair<Int, Int>>> { //implemented with union find
     val height = image.size  //maybe the other way
     val width = image[0].size
+//later might add ranking to make tree shallow and fasten thing even more
+//    var components: List<Pair<MutableList<Pair<Int, Int>>,Int>> // it is a list of pairs containing list of vertices and a threshold number
     val edges = mutableListOf<Edge>()   //list of edges
-    var components: List<Pair<MutableList<Pair<Int, Int>>,Int>> // it is a list of pairs containing list of vertices and a threshold number
+    var parenthood = mutableListOf<Int>()  //list of parent indexes
+    var sizes = mutableListOf<Int>()  //list 'families' sizes
+    var thresholds = mutableListOf<Int>()  //list of thresholds
     println("starting segmentation")
     for (i in 0 until height)
     {
@@ -186,26 +234,51 @@ fun imageSegmentation(image : MutableList<MutableList<Int>>,k : Int): MutableLis
         }
     }
     edges.sortBy { it.weight }
-//    components = edges.map { mutableListOf(it) } as MutableList<MutableList<Edge>>
-    components =( edges.map {Pair(mutableListOf(it.v1),k )} + edges.map { Pair(mutableListOf(it.v2),k) }).distinctBy{it.first}.toMutableList()
+    for (i in 0 until height*width) {
+        parenthood.add(i)
+        thresholds.add(k)
+        sizes.add(1)
+    }
     for (i in 0 until edges.size) {
-        try{
-            val C1 =
-                components.first() { if(it.first.find {it == edges[i].v1 } != null) true else false }
-            val C2 =
-                components.first() { if(it.first.find {it == edges[i].v2 } != null) true else false }
-            if (C1 != C2 && edges[i].weight <= C1.second && edges[i].weight <= C2.second) {
-                components.remove(C2)
-                components.remove(C1)
-                components.add(Pair(C1.first + C2.first,edges[i].weight + (k/(C1.first.size+C2.first.size))) as Pair<MutableList<Pair<Int, Int>>, Int>)
-            }///////merging edge is maximum in the component cause they are ordered
-
+        var currentParent = edges[i].v1.first * width + edges[i].v1.second
+        while (parenthood[currentParent] != currentParent) //finding function
+        {
+            currentParent = parenthood[currentParent]
         }
-        catch (e :Exception){}
+        val parent1 = currentParent
+
+        currentParent = edges[i].v2.first * width + edges[i].v2.second
+        while (parenthood[currentParent] != currentParent) //finding function
+        {
+            currentParent = parenthood[currentParent]
+        }
+        val parent2 = currentParent
+
+        if (parent1==parent2) continue
+        if(edges[i].weight > thresholds[parent1] || edges[i].weight > thresholds[parent2]) continue
+
+        parenthood[parent1] = parent2
+        sizes[parent2] += sizes[parent1]
+        thresholds[parent2] = edges[i].weight + k/sizes[parent2]
+
+    }
+
+    val tempMap = mutableMapOf<Int,MutableList<Pair<Int,Int>>>()
+    for (i in 0 until height)
+    {
+        for (j in 0 until width)
+        {
+            var currentParent = i * width + j
+            while (parenthood[currentParent] != currentParent) //finding function
+            {
+                currentParent = parenthood[currentParent]
+            }
+            tempMap.getOrPut(currentParent) { mutableListOf() }.add(Pair(i,j))
+        }
     }
     println("segmentation finished")
     Edges = edges
-    return components.map { it.first }.toMutableList()
+    return tempMap.values.toMutableList()
 }
 
 fun findEdges(
@@ -215,6 +288,7 @@ fun findEdges(
     ): MutableList<Edge> {
     return edges.filter {edge -> vertices.find { it == edge.v1 } != null  && vertices.find { it == edge.v2 }!= null  }.toMutableList()
 }
+
 
 
 fun MIntDiff(C1: MutableList<Edge>, C2: MutableList<Edge>, k: Int) : Int

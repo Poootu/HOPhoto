@@ -66,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import com.example.hophoto.copiedTestCode.test1
+import com.example.hophoto.copiedTestCode.test2
 
 
 class MainActivity : ComponentActivity() {
@@ -125,43 +126,35 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     takePhoto(camController,
                                         { imgBitmap ->
+
+
+                                            val newBitmap = Bitmap.createScaledBitmap(imgBitmap,512,512,false)
                                             val array: IntArray =
-                                                IntArray(imgBitmap.height * imgBitmap.width)
-                                            imgBitmap.asImageBitmap().readPixels(
+                                                IntArray(newBitmap.height * newBitmap.width)
+                                            newBitmap.asImageBitmap().readPixels(
                                                 array,
                                                 0,
                                                 0,
-                                                imgBitmap.width,
-                                                imgBitmap.height,
+                                                width = newBitmap.width,
+                                                height = newBitmap.height,
                                                 0
                                             )
-                                            Log.i("test",array[0].toHexString(HexFormat.UpperCase))
-                                            var imgPixels = array.map {
-                                                var hexColor = it.toHexString(HexFormat.UpperCase)
-                                                Triple(
-                                                    (hexColor.substring(2, 4).hexToInt()),
-                                                    (hexColor.substring(4, 6).hexToInt()),
-                                                    (hexColor.substring(6, 8).hexToInt())
-                                                )
-                                            }
-                                            Log.i("test", array.size.toString())
-                                            val newBitmap = imgBitmap.copy(imgBitmap.config!!,true)
-                                                newBitmap.setPixels(
-                                                test1(
-                                                    imgPixels.toMutableList(),
-                                                    imgBitmap.height,
-                                                    imgBitmap.width
-                                                ),
-                                                0,
-                                                imgBitmap.width,
-                                                0,
-                                                0,
-                                                imgBitmap.width,
-                                                imgBitmap.height
+                                            newBitmap.setPixels(
+                                            test2(
+                                                array,
+                                                newBitmap.height,
+                                                newBitmap.width
+                                            ),
+                                            0,
+                                            newBitmap.width,
+                                            0,
+                                            0,
+                                            newBitmap.width,
+                                            newBitmap.height
                                             )
                                             Log.i(
                                                 "test",
-                                                "width ${imgBitmap.width}  height ${imgBitmap.height}"
+                                                "width ${newBitmap.width}  height ${newBitmap.height}"
                                             )
                                             lastImage = newBitmap
                                             showImage = true
